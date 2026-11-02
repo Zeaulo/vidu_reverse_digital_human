@@ -26,6 +26,7 @@ class ViduSettings(BaseModel):
 
 class EventSettings(BaseModel):
     """事件过滤与队列配置。"""
+    gift_combo_timeout_seconds: float = Field(default=2.0, ge=0.1, le=30)  # 连击静默暂结时间。
     comments: bool = True
     gifts: bool = True
     likes: bool = False

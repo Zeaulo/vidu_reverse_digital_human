@@ -44,7 +44,7 @@ async function refreshBridge() {
     statusText.textContent = labels[data.state] || data.state;
     roomText.textContent = data.room_id || '未设置'; queueText.textContent = data.queue_size;
     if (data.state === 'online' && data.room_id && data.room_id !== historyRoomRecorded) { inputHistory.add('room', data.room_id); historyRoomRecorded = data.room_id; } // 仅记录已确认连接的直播间。
-    if (!warmupBusy) document.querySelector('#warmup').checked = !!data.warmup;
+    if (!warmupBusy) for (const kind of ['enter','like','comment']) document.querySelector('#auto-'+kind).checked = !!data.automation[kind];
     const count = data.counts;
     const detail = data.state === 'room_status_unknown' ? '上游未返回可验证的房间状态，采集已停止，请稍后重试。' : data.detail; // 本项目不会在未知状态下继续轮询。
     summary.textContent = '收到 '+(count.received||0)+' · 评论 '+(count.comment||0)+' · 点赞增量 '+(count.likes||0)+' · 礼物事件 '+(count.gift||0)+' · 累计入队 '+(count.queued||0)+' · 发送 '+(count.sent||0)+' · Vidu接受 '+(count.accepted||0)+' · 审核未通过 '+(count.moderation_rejected||0)+' · 丢弃或过期 '+(count.dropped||0)+' · 回执不明 '+(count.failed||0)+(detail?' · '+detail:'');
@@ -97,11 +97,17 @@ stopRoom.onclick = event => roomAction(event.currentTarget, '正在停止采集�
   await window.studioReady; await bridgeRequest('/api/session/room/stop',{});
   return '采集已停止，待处理队列已清空；Vidu 通话不受影响。';
 });
-document.querySelector('#warmup').onchange = async event => {
+for (const kind of ['enter','like','comment']) document.querySelector('#auto-'+kind).onchange = async event => {
   const toggle = event.currentTarget; warmupBusy = true; toggle.disabled = true;
-  try { await window.studioReady; await bridgeRequest('/api/session/warmup', {enabled:toggle.checked}); roomResult.textContent = toggle.checked ? '暖场已开启；进入、点赞和礼物将按队列依次发送。' : '暖场已关闭，尚未发送的暖场事件已移除。'; }
-  catch (error) { toggle.checked = !toggle.checked; roomResult.textContent = '暖场设置失败：' + error.message; }
-  finally { warmupBusy = false; toggle.disabled = false; }
+  for (const key of ['enter','like','comment']) document.querySelector('#auto-'+key).disabled = true; // 串行保存，避免快速点击覆盖。
+  try {
+    await window.studioReady;
+    const changes = Object.fromEntries(['enter','like','comment'].map(key => [key,document.querySelector('#auto-'+key).checked])); // 完整提交三种状态。
+    await bridgeRequest('/api/session/automation', changes);
+    roomResult.textContent = '互动设置已保存；关闭类型的待发送事件已移除，礼物规则独立生效。';
+  }
+  catch (error) { toggle.checked = !toggle.checked; roomResult.textContent = '互动设置失败：' + error.message; }
+  finally { warmupBusy = false; for (const key of ['enter','like','comment']) document.querySelector('#auto-'+key).disabled = false; }
 };
 document.querySelector('#export-events').onclick = event => roomAction(event.currentTarget, '正在准备直播记录…', async () => {
   await window.studioReady;
