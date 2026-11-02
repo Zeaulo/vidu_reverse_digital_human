@@ -104,8 +104,8 @@ def test_catalog_nested_pages_same_name_and_fallback(tmp_path):
     """目录失败不清空缓存；同名异 ID 保留，事件值优先于历史。"""
     catalog=GiftCatalog(baseline=tmp_path/'missing.json')
     catalog.import_response('r',{'status_code':0,'data':{'gifts':[],
-        'pages':[{'gifts':[{'id':'1','name':'同名','diamond_count':1},
-                           {'id':'2','name':'同名','diamond_count':999}]}]}})
+        'pages':[{'gifts':[{'id':'1','name':'同名','diamond_count':1,'is_displayed_on_panel':True},
+                           {'id':'2','name':'同名','diamond_count':999,'is_displayed_on_panel':True}]}]}})
     assert catalog.query('r','同名')['total']==2
     with pytest.raises(ValueError):
         catalog.import_response('r',{'status_code':0,'data':{'gifts':[]}})
@@ -147,9 +147,54 @@ def test_catalog_api_session_and_origin():
         client.get('/api/vidu/status')
         headers={'X-Studio-Request':'1'}
         data=client.get('/api/gifts/catalog?search=小心心',headers=headers).json()
-        assert {row['id'] for row in data['items']} >= {'463','15012'}
+        assert {row['id'] for row in data['items']} >= {'463'}
+        assert '15012' not in {row['id'] for row in data['items']}
+        all_data=client.get('/api/gifts/catalog?search=小心心&include_hidden=true',headers=headers).json()
+        assert {row['id'] for row in all_data['items']} >= {'463','15012'}
         assert client.post('/api/gifts/refresh',headers={**headers,'Origin':'https://example.com'}).status_code==403
         assert client.post('/api/gifts/refresh',headers=headers).status_code==502
+
+
+def test_catalog_hides_system_ids_by_default_and_can_include_them(tmp_path):
+    """目录默认只展示用户面板礼物，显式参数才展示系统隐藏 ID。"""
+    catalog = GiftCatalog(baseline=tmp_path/'missing.json')
+    catalog.baseline = {
+        '463': {'id':'463','name':'小心心','is_displayed_on_panel':True},
+        '15012': {'id':'15012','name':'小心心','is_displayed_on_panel':False},
+    }
+    default = catalog.query('', '小心心')
+    hidden = catalog.query('', '小心心', include_hidden=True)
+    assert {row['id'] for row in default['items']} == {'463'}
+    assert {row['id'] for row in hidden['items']} == {'463','15012'}
+    assert default['visible_count'] == 1 and default['hidden_count'] == 1
+    assert hidden['include_hidden'] is True
+
+
+def test_import_response_preserves_douyin_visibility_flag(tmp_path):
+    """目录响应中的 is_displayed_on_panel 不被名称和图片覆盖。"""
+    catalog = GiftCatalog(baseline=tmp_path/'missing.json')
+    catalog.import_response('r', {'status_code':0,'data':{'gifts':[
+        {'id':'463','name':'小心心','is_displayed_on_panel':True},
+        {'id':'15012','name':'小心心','is_displayed_on_panel':False},
+    ]}})
+    assert catalog.entries('r')['463']['is_displayed_on_panel'] is True
+    assert catalog.entries('r')['15012']['is_displayed_on_panel'] is False
+
+
+def test_missing_visibility_is_unknown_and_does_not_erase_snapshot(tmp_path):
+    """缺少布尔字段时不猜测；同 ID 可沿用有来源的历史证据。"""
+    catalog = GiftCatalog(baseline=tmp_path/'missing.json')
+    catalog.baseline = {'463': {'id':'463','name':'小心心','is_displayed_on_panel':True}}
+    catalog.import_response('r', {'status_code':0,'data':{'gifts':[
+        {'id':'463','name':'小心心'}, {'id':'99999','name':'新礼物'},
+    ]}})
+    result = catalog.query('r', include_hidden=True)
+    rows = {row['id']:row for row in result['items']}
+    assert rows['463']['is_displayed_on_panel'] is True
+    assert rows['463']['visibility_source'] == 'historical_snapshot'
+    assert rows['99999']['is_displayed_on_panel'] is None
+    assert result['unknown_count'] == 1
+    assert {row['id'] for row in catalog.query('r')['items']} == {'463'}
 
 
 def test_catalog_ttl_and_reference_value_excluded(tmp_path):

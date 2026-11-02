@@ -3,11 +3,16 @@
   const storageKey = 'studio.gift-rules.v1'; // 浏览器本地规则草稿。
   const section = document.createElement('details'); // 不参与四步连接状态门禁。
   section.className = 'gift-rules'; section.open = true;
-  section.innerHTML = '<summary>礼物绑定触发自定义指令</summary><p class="gift-help">选择礼物后配置指令。同一连击达到数量门槛时触发一次；未绑定礼物沿用普通答谢。</p><div id="rule-list"></div><div class="rule-buttons"><button id="rule-add" class="button button-secondary">添加礼物规则</button><button id="rule-save" class="button">保存规则</button><button id="rule-preview" class="button button-secondary">预览指令</button></div><p id="rule-status" role="status"></p><pre id="rule-preview-text"></pre>';
+  section.innerHTML = '<summary>礼物绑定触发自定义指令</summary><p class="gift-help">选择礼物后配置指令。同一连击达到数量门槛时触发一次；未绑定礼物沿用普通答谢。</p><label class="gift-hidden-toggle"><input id="rule-include-hidden" type="checkbox"> 显示系统隐藏礼物及状态未知礼物</label><div id="rule-list"></div><div class="rule-buttons"><button id="rule-add" class="button button-secondary">添加礼物规则</button><button id="rule-save" class="button">保存规则</button><button id="rule-preview" class="button button-secondary">预览指令</button></div><p id="rule-status" role="status"></p><pre id="rule-preview-text"></pre>';
   panel.append(section);
   const list = section.querySelector('#rule-list'); // 所有规则编辑行。
   const status = section.querySelector('#rule-status'); // 保存及错误反馈。
   let busy = false; // 防止并发保存覆盖。
+  section.querySelector('#rule-include-hidden').onchange = event => {
+    const toggle = document.querySelector('#gift-include-hidden'); // 两处开关始终保持一致。
+    toggle.checked = event.currentTarget.checked;
+    toggle.dispatchEvent(new Event('change'));
+  };
 
   window.giftThumbnail = row => {
     // 目录图片失效时显示占位符；所有远程文字通过 textContent 输出。
@@ -30,17 +35,18 @@
     const input = row.querySelector('[data-key="gift_id"]'); // 查询后写入精确 ID。
     const selected = row.querySelector('.rule-selected'); // 当前选择的图片和名称。
     let sequence = 0; // 丢弃旧搜索结果。
-    const select = gift => { input.value = gift.id; selected.replaceChildren(window.giftThumbnail(gift),document.createTextNode((gift.name || '未知礼物')+' · ID '+gift.id)); };
+    const label = gift => gift.is_displayed_on_panel===true ? '面板可见' : gift.is_displayed_on_panel===false ? '系统隐藏' : '状态未知';
+    const select = gift => { input.value = gift.id; selected.replaceChildren(window.giftThumbnail(gift),document.createTextNode((gift.name || '未知礼物')+' · ID '+gift.id+' · '+label(gift))); };
     row.querySelector('.rule-search').onclick = async () => {
       const current = ++sequence; const results = row.querySelector('.rule-results');
       try {
         await window.studioReady;
-        const data = await bridgeRequest('/api/gifts/catalog?limit=20&search='+encodeURIComponent(input.value.trim()));
-        if (current !== sequence) return;
+        const data = await bridgeRequest('/api/gifts/catalog?limit=20&search='+encodeURIComponent(input.value.trim())+'&include_hidden='+document.querySelector('#gift-include-hidden').checked);
+        if (current !== sequence || data.include_hidden !== document.querySelector('#gift-include-hidden').checked) return; // 开关变化后忽略旧查询。
         results.replaceChildren();
         for (const gift of data.items) {
           const button = document.createElement('button'); button.type = 'button'; button.className = 'gift-choice';
-          button.append(window.giftThumbnail(gift),document.createTextNode((gift.name || '未知礼物')+' · '+gift.id+' · '+(gift.diamond_count ?? '?')+' 钻'));
+          button.append(window.giftThumbnail(gift),document.createTextNode((gift.name || '未知礼物')+' · '+gift.id+' · '+(gift.diamond_count ?? '?')+' 钻 · '+label(gift)));
           button.onclick = () => { select(gift); results.replaceChildren(); }; results.append(button);
         }
         if (!data.items.length) results.textContent = '未找到目录记录。可直接填写真实礼物 ID，名称与图片会在采集后补全。';
@@ -49,7 +55,7 @@
     row.querySelector('.rule-remove').onclick = () => { row.remove(); status.textContent = '规则已从草稿删除，请保存生效。'; };
     list.append(row);
     if (rule.gift_id) window.studioReady.then(async () => {
-      const data = await bridgeRequest('/api/gifts/catalog?search='+encodeURIComponent(rule.gift_id));
+      const data = await bridgeRequest('/api/gifts/catalog?include_hidden=true&search='+encodeURIComponent(rule.gift_id));
       const gift = data.items.find(item => item.id === rule.gift_id);
       if (gift && input.value === rule.gift_id) select(gift);
     }).catch(() => {});
