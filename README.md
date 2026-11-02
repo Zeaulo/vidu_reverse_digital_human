@@ -1,70 +1,210 @@
-# Vidu 数字人直播桥 v0.14.1
+<h1 align="center">Vidu Live Studio</h1>
 
-已实测：抖音访客采集 → 独立队列 → Vidu WebSocket 指令回执 → Studio 真实音视频。
+<h4 align="center">数字人直播桥 · 把直播间互动，连接到数字人的实时通话。</h4>
 
-## 启动
+<p align="center">
+  基于 FastAPI、Playwright 与 WebRTC 的本地直播控制台。<br>
+  管理 Vidu 通话、调度抖音直播事件，并将音视频接入 OBS。
+</p>
 
-需要 Windows、Python 3.11 或以上、Google Chrome，以及另行下载的 douyinLive 采集器。项目通过浏览器使用 Vidu 服务，须自行准备有效的 Vidu 账号和角色。首次运行请先按下述步骤安装依赖和采集器，然后双击根目录的 `start.cmd`；也可在项目根目录执行：
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a5bd87?style=flat-square" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/version-0.14.2-a5bd87?style=flat-square" alt="Version: 0.14.2">
+  <img src="https://img.shields.io/badge/platform-Windows-64748b?style=flat-square" alt="Platform: Windows">
+  <img src="https://img.shields.io/badge/Python-3.11%2B-64748b?style=flat-square" alt="Python 3.11+">
+</p>
 
-启动时会强制结束所有监听 8795 端口的进程，然后启动 Studio；旧进程中的未保存会话和直播记录会丢失。1088 端口上的采集器继续沿用现有实例。
+<p align="center">
+  <a href="#功能亮点">功能亮点</a> ·
+  <a href="#界面预览">界面预览</a> ·
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#使用流程">使用流程</a> ·
+  <a href="#开发与验证">开发与验证</a> ·
+  <a href="#许可证">许可证</a>
+</p>
 
-```powershell
+<p align="center">
+  <img src="docs/images/studio-overview.jpg" alt="控制台总览：账号连接、视频源和直播间事件" width="900">
+  <br><sub>当前前端的隔离演示截图：账号状态与事件为虚构数据，视频未连接。</sub>
+</p>
+
+## 功能亮点
+
+| 功能 | 你可以做什么 |
+| --- | --- |
+| 分步连接 | 按启动窗口、登录账号、选择角色、发送指令四步操作，实时查看处理状态。 |
+| 直播互动调度 | 采集评论并排队发送；开启暖场后，欢迎进入直播间的观众，感谢点赞和礼物。 |
+| 音视频预览 | 查看数字人音视频，开启声音、重新连接画面，并观察源轨道和收发画质。 |
+| OBS 接入 | 复制本机浏览器源链接；支持控制台与 OBS 并行接收，转发比例可选 100%、80%、50%。 |
+| 有限自动恢复 | 对明确的超时和时长上限退避重试；恢复期间尽量保留最后一帧，手动停止立即取消。 |
+| 历史与记录 | 手机号、角色和房间提供历史候选；消息支持回车发送和高频历史选择；完整直播记录可导出。 |
+| 本机会话隔离 | 各会话独立管理通话与事件；登录 Cookie 使用 Windows DPAPI 加密保存，最长可恢复 24 小时。 |
+
+## 界面预览
+
+### 一步一步，建立数字人连接
+
+已完成步骤自动折叠，未完成的前置步骤会锁定后续操作。按钮附近显示执行结果，媒体连通后才解锁自定义发送。
+
+![账号与接口指令面板：四步连接流程](docs/images/connection.jpg)
+
+### 预览画面，接入 OBS
+
+声音、画面重连、OBS 链接和转发比例集中在视频源区域。通话恢复时显示最近缓存的画面，新帧到达后自动切换。
+
+![数字人视频源与 OBS 控制区域，截图中的视频处于未连接状态](docs/images/media-obs.jpg)
+
+### 看清每一次互动的处理状态
+
+评论置顶，进入和点赞各自展示；事件带时间戳，从新到旧排列。区分收到、排队、发送和服务端接受，并支持保存完整记录。
+
+![演示直播间事件：实时评论、进入和点赞记录，以及发送统计](docs/images/live-events.jpg)
+
+> 以上图片由项目当前前端渲染，使用隔离的虚构状态与事件；视频面板处于等待媒体状态。截图用于展示界面，不作为真实直播或媒体效果的验证证据。
+
+## 快速开始
+
+### 1. 准备环境
+
+- Windows、Python 3.11 或以上、Git、Google Chrome。
+- 可用的 Vidu 账号和属于自己的角色 ID。
+- 独立安装 [douyinLive v2.3.2](https://github.com/jwwsjlm/douyinLive/releases/tag/v2.3.2) 直播事件采集器。
+
+### 2. 下载项目并安装依赖
+
+在 PowerShell 中运行：
+
+~~~powershell
+# 下载项目
+git clone https://github.com/Zeaulo/vidu_reverse_digital_human.git
+cd vidu_reverse_digital_human
+
+# 创建独立 Python 环境并安装依赖
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+~~~
+
+### 3. 配置采集器
+
+从上述发行页面下载 **windows-amd64.zip**，核对发布页的 **checksums.txt** 后，解压至 **test/tools/douyin/**。目录中应有 **douyinLive.exe**。
+
+已验证发行包的 SHA256：
+
+~~~text
+da050a808fe468e7d4702175bab6dd8a46565c7a38eb923c143c8797b5157375
+~~~
+
+将**采集器自带的 config.example.yaml** 复制为同目录的 **config.yaml**，并在对应配置项中设置以下值，保留文件内其他默认配置：
+
+~~~yaml
+port: '1088'
+cookie:
+  use_stored: false
+websocket:
+  allowed_origins:
+    - 'http://127.0.0.1:8795'
+~~~
+
+最终目录：
+
+~~~text
+test/tools/douyin/
+├── douyinLive.exe
+├── config.example.yaml
+└── config.yaml
+~~~
+
+采集器以访客身份运行，无须提供抖音登录 Cookie。其发行版可能监听所有网络接口，请将采集服务留在本机使用。
+
+### 4. 一键启动
+
+双击根目录的 **start.cmd**，或在 PowerShell 中运行：
+
+~~~powershell
 powershell -ExecutionPolicy Bypass -File test/start_studio.ps1
-```
+~~~
 
-打开 http://127.0.0.1:8795 。douyinLive v2.3.2 安装路径为 test/tools/douyin；端口 1088，cookie.use_stored=false，以访客身份采集。其上游发行版监听所有网络接口，不应将 1088 端口转发到公网。
+打开 **[http://127.0.0.1:8795](http://127.0.0.1:8795)**。
 
-各操作的处理结果显示在对应按钮附近；直播间连接与事件发送分别查看服务状态、事件统计和事件记录。出现“房间状态未知”表示上游没有返回可验证状态，采集已停止，可以稍后重试。
+> 启动脚本会强制结束监听 **8795** 端口的进程，再启动控制台；旧进程里未导出的直播记录会丢失。**1088** 端口已有采集器时沿用该实例。
 
-迁移到新机器时，从 https://github.com/jwwsjlm/douyinLive/releases/tag/v2.3.2 下载 windows-amd64.zip，核对发布页 checksums.txt 后解压到 test/tools/douyin。当前发布包 SHA256：da050a808fe468e7d4702175bab6dd8a46565c7a38eb923c143c8797b5157375。复制 config.example.yaml 为 config.yaml，设置 port: '1088'、cookie.use_stored: false、websocket.allowed_origins: ['http://127.0.0.1:8795']。
+## 使用流程
 
-## 操作
+1. **连接 Vidu**：启动有头 Chrome，登录账号，输入角色 ID 并等待媒体连接。保持 Vidu 窗口打开。
+2. **连接直播间**：输入抖音直播间 ID，启动采集与自动调度。需要欢迎和感谢互动时开启暖场。
+3. **发送自定义指令**：在步骤 4 输入内容，点击发送或按回车；中文输入法选词不会触发发送。
+4. **接入 OBS**：点击“复制 OBS 链接”，在同一电脑的 OBS 中添加“浏览器源”，粘贴地址并设置宽高。需要 OBS 混音时启用“通过 OBS 控制音频”。
+5. **保存与结束**：先保存直播记录，再停止采集或通话。停止采集不挂断数字人；断开通话会取消自动恢复。
 
-1. 在步骤 1 启动可见 Chrome 并保持窗口打开，然后在步骤 2 请求短信并输入验证码登录。本地不限制短信请求间隔，Vidu 上游仍可能限流。
-2. 在步骤 3 输入自己的角色 ID 并开始通话。切换角色时先展开步骤 3 并断开连接，再输入新角色 ID。通话授权根据用户明确要求默认选中，API 仍要求 consent=true。
-3. 输入房间号并点击连接直播间并自动调度。评论默认进入队列；开启暖场后入场、点赞和礼物也会排队发送包含用户名的欢迎或感谢指令。队列容量和发送间隔限制仍然生效，高频事件可能过期或丢弃。
-4. 数字人视频源会自动播放，点击开启声音解除静音。发送指令经业务 WebSocket，不填写官网输入框。
-5. 停止采集只停止事件；停止通话及自动恢复才结束 Vidu 通话。退出登录销毁本会话所有资源。
+每次重新连接直播间都会清空上一轮记录。OBS 链接含媒体访问凭证，退出登录、撤销链接或重启服务后失效；授权与服务使用应由使用者自行确认。
 
-「直播间事件」按评论、进入、点赞和其他事件分区，每条显示本程序收到事件的本地时间，各区按时间从新到旧排列。页面每种类型最多显示最近 80 条；点击「保存直播记录」下载本次连接的完整 UTF-8 JSON 记录与统计。每次连接会清空上一轮未导出的记录，请在重新连接前保存；临时归档在清除登录态或重启服务后销毁。
+### 恢复行为与使用边界
 
-成功验证码登录后，Vidu Cookie 使用 Windows 当前用户的 DPAPI 加密保存于本地，最长可用 24 小时；步骤 2 选择账号后可一键恢复，上游验证失败仍需验证码。可在步骤 2 清除指定账号的保存登录态；“清除当前登录态”不删除保存账号。服务运行时定期清理过期记录，服务关闭时会在下次启动或读取时清理。
+| 情况 | 当前处理方式 |
+| --- | --- |
+| 连接超时或 duration_limit | 启用自动恢复时，按 5／10／20 秒退避，每次手动开始最多重建三次。 |
+| 单条内容审核拒绝 | 标记该条失败，不重发；不因单条拒绝主动挂断。 |
+| 官网明确提示内容不符合规范且直播已结束 | 检查视频是否仍在增帧；确认停止后清空待发队列，开启自动恢复时五秒后最多尝试一次。再次触发则提示处理。 |
+| 登录失效、额度结束、未知错误 | 提示用户处理，停止自动创建通话。 |
 
-成功登录的手机号和成功连接的角色 ID 保存在控制台所在浏览器的本地存储中，输入框提供历史候选；验证码、Cookie 和令牌不会保存在历史中。清除登录态不会清除候选记录，可在对应步骤点击“清除手机号历史”或“清除角色 ID 历史”。
+恢复创建新通话可能消耗 Vidu 额度。accepted=true 仅代表服务端接收指令，不能证明语音或动作已经完整执行。100% 转发表示请求原始尺寸，实际编码受浏览器、网络与计算资源影响。
 
-成功连接的直播间 ID 同样提供浏览器本地下拉候选，可在直播间区域清除。通话遇到 `duration_limit` 且已启用自动恢复时，会按 5／10／20 秒退避，最多重试三次；恢复期间视频区域尽可能显示最近缓存的画面，新画面到达后自动切换。每次恢复会创建新的 Vidu 通话，额度由 Vidu 决定。
+详细操作与本地数据说明见 **[使用手册](docs/usage.md)**。
 
-自定义发送支持回车；获得 Vidu 接受回执的消息保存在当前浏览器，候选按使用频率排序，可手动清除。消息内容属于浏览器本地数据，请勿在共享浏览器中保存敏感内容。
+## 工作原理
 
-通话诊断记录在 `logs/call_diagnostics.log`，只记录发送结果及断线原因类别，不记录手机号、Cookie、验证码或消息正文。记录仅用于后续诊断，不能证明每次断线的根因。
+~~~mermaid
+flowchart LR
+    D[抖音直播间] --> C[douyinLive 访客采集]
+    C --> B[事件过滤与优先队列]
+    U[自定义文字指令] --> W[Vidu 业务 WebSocket]
+    B --> W
+    W --> V[有头 Chrome 内的 Vidu 通话]
+    V --> R[本机 WebRTC 中继]
+    R --> S[Studio 音视频预览]
+    R --> O[OBS 浏览器源]
+~~~
 
-官网明确提示“审核未通过”时，程序尝试关闭该提示；可关联到当前待发送消息时，标记为审核未通过，不重发该条内容，也不因这一结果主动结束通话。无法准确识别的提示需手动处理；无法识别的指令错误显示为单条失败，通话状态由真实连接和媒体状态决定。
+FastAPI 管理本机会话和调度，Playwright 承载官方网页的登录与媒体环境。Chrome 负责上游 RTC，控制台与 OBS 通过本机 WebRTC 接收音视频。
 
-收到 `audit_rejected` 时，程序观察官网画面及随后出现的结束提示；视频帧持续增长时保留页面并暂停发送，观察十秒后仍无法确认且没有明确结束提示时提示处理。只有官网页面同时出现“通话已结束”“当前内容不符合规范”“直播已结束”，才识别为内容审核结束：暂停自动发送、清空待发送队列并继续记录事件；画面确实停止后，若启用了自动恢复，等待五秒并复核登录，最多创建一次新通话。新媒体连通后恢复处理新事件，旧消息不会重放；再次出现该提示或恢复失败时停止并提示用户。恢复期间尽量保留视频最后一帧，创建新通话可能消耗额度。页面检测和恢复链路已模拟测试，真实审核结束场景尚未验证。
+## 开发与验证
 
-视频区可选择 100%、80%、50% 的转发比例，默认 100%，对控制台和 OBS 同时生效；设置保留在本次本地会话中，退出登录或重启后恢复默认。浏览器会被请求优先保持分辨率，带宽或计算资源不足时可能降低帧率或仍达不到目标。视频区显示源轨道、目标、本机转发、控制台接收及 OBS 转发的可用尺寸，并显示浏览器报告的画质限制原因和参数回读值；编码上限 8 Mbps 不是实际码率。浏览器不支持参数时会提示，不中断播放。
-
-音频输入测试记录见 `versions/vidu-audio-probe-v0.13.1.md`：已在独立网页实时通话中验证歌曲短片段经 RTC 麦克风轨道上行，未证明业务 WebSocket 支持音频输入，也未证明数字人能跟唱。测试脚本不会在正常启动时运行。
-
-OBS 接入：在数字人视频源点击“复制 OBS 链接”，在同一台电脑的 OBS 中添加“浏览器源”并粘贴地址；宽高按直播画布调整。若需要 OBS 混音器管理声音，可在浏览器源属性中启用“通过 OBS 控制音频”。若自动播放被阻止，在 OBS 中对该源选择“交互”并点击启用声音。该地址是本机浏览器源链接，不是 RTMP/FLV 流地址；链接含播放凭证，复制给他人可能暴露当前会话的媒体访问权。退出登录、重启服务或点击“撤销链接”后失效，重新生成会使旧链接失效。
-
-## 真实验证
-
-2026-10-30：匿名采集 283 条事件，其中评论 33、点赞事件 161、进场 89，点赞增量 1425；发送 21 条，21 条 accepted=true。播放器 383×682，帧数从 252 增至 857，音频 RTP 非零能量。刷新 Studio 后重新协商并恢复播放。真实礼物未在观察窗口出现。accepted 只证明服务接收，不证明每条话语完整播完。
-
-自动重建已有 5/10/20 秒退避与三次上限；模拟测试通过，本次未触发真实官网超时，不能宣称实测过完整自动重建。OBS 浏览器源与音视频并行链路已用合成媒体测试，真实 Vidu 通话与实际 OBS 中的音画仍需验证；RTMP 推流未集成。
-
-## 验证命令和入口
-
-```powershell
+~~~powershell
+# API、事件、会话隔离与恢复逻辑测试
 .\.venv\Scripts\python.exe -m pytest -q test
+
+# 业务信令序号、回执与停止行为测试（需要 Node.js）
 node test/test_runtime.cjs
-```
 
-生产入口 app.main:app；test/integration_server.py 是一次性受随机密钥保护的会话迁移联调入口，正常使用不需要。test/tools 不提交仓库。开发结构和边界详见 versions/project_overall/index.html，实测记录见 versions/integration-v0.4.0.md。
+# 使用隔离演示数据重新生成 README 截图
+.\.venv\Scripts\python.exe test/capture_readme.py
+~~~
 
-## 许可证与第三方服务
+| 目录 | 内容 |
+| --- | --- |
+| app/adapters/ | Vidu 浏览器、业务信令、媒体中继与抖音事件适配。 |
+| app/services/ | 通话恢复、事件过滤与直播队列调度。 |
+| app/api/、app/storage/ | 会话接口、OBS 访问、加密账号和事件归档。 |
+| web/ | 控制台与 OBS 浏览器源页面。 |
+| test/ | 启动、测试、排查与截图生成脚本。 |
+| versions/ | 版本历史、实测记录与项目架构手册。 |
 
-项目自有代码以 [MIT License](LICENSE) 发布。本项目与 Vidu、抖音及 douyinLive 项目无官方关联；Vidu 和抖音服务、账户、内容及品牌分别受其服务条款与权利人约束。douyinLive 需单独下载，按其[上游许可证](https://github.com/jwwsjlm/douyinLive/blob/main/LICENSE)使用；Python、浏览器及其他依赖各自遵循其许可证。音频测试必须自行提供有权使用的音频，仓库不包含测试录音或参考歌曲。
+已记录真实评论采集、业务指令接受回执与音视频接收证据。自动恢复和 OBS 并行媒体链路已有模拟测试，真实审核结束后的恢复与实际 OBS 联调仍待验证；RTMP 推流未集成。音频输入实验仅证实 RTC 音轨上行，未证实业务 WebSocket 音频输入或数字人跟唱。
+
+- [内部开发手册](versions/project_overall/index.html)（克隆后用浏览器打开）
+- [真实联调记录](versions/integration-v0.4.0.md)
+- [音频输入实验](versions/vidu-audio-probe-v0.13.1.md)
+- [版本记录](versions/update.log)
+- [反馈问题](https://github.com/Zeaulo/vidu_reverse_digital_human/issues)
+
+## 致谢
+
+本项目使用 [FastAPI](https://github.com/fastapi/fastapi)、[Playwright](https://github.com/microsoft/playwright-python)、[Pydantic](https://github.com/pydantic/pydantic)、[Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) 与独立安装的 [douyinLive](https://github.com/jwwsjlm/douyinLive)。README 排版参考 [Markdownify](https://github.com/amitmerchant1990/electron-markdownify)。
+
+## 许可证
+
+项目自有代码以 **[MIT License](LICENSE)** 发布。Vidu、抖音、浏览器与第三方依赖分别遵循各自条款和许可证；本项目与这些服务无官方关联。仓库不包含第三方采集器二进制、登录 Cookie、参考歌曲或测试录音。
+
+---
+
+<p align="center"><a href="https://github.com/Zeaulo">Zeaulo</a> · <a href="https://github.com/Zeaulo/vidu_reverse_digital_human/issues">报告问题</a> · <a href="versions/update.log">更新记录</a></p>

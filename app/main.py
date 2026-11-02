@@ -40,7 +40,7 @@ async def lifespan(application):
     obs_access.tokens.clear()  # 进程停止时所有 OBS 地址失效。
 
 
-app = FastAPI(title="Vidu 数字人直播桥", version="0.14.1", lifespan=lifespan)
+app = FastAPI(title="Vidu 数字人直播桥", version="0.14.2", lifespan=lifespan)
 app.include_router(vidu_router)
 app.include_router(obs_router)
 app.mount("/assets", StaticFiles(directory=ROOT_DIR / "web" / "assets"), name="assets")
@@ -65,7 +65,7 @@ class WarmupRequest(BaseModel):
 @app.get("/api/health")
 async def health() -> dict:
     """返回服务和队列健康状态。"""
-    return {"status": "ok", "version": "0.14.1"}
+    return {"status": "ok", "version": "0.14.2"}
 
 
 @app.post("/api/session/room")
