@@ -83,7 +83,7 @@
     // 预览只展示文本，不调用 Vidu，不消耗通话额度。
     section.querySelector('#rule-preview-text').textContent = readRules().map(rule => {
       const text = rule.instruction.replaceAll('{昵称}','示例观众').replaceAll('{礼物名称}','所选礼物').replaceAll('{数量}',String(rule.min_count));
-      return 'ID '+rule.gift_id+'：'+(rule.thanks ? '请先说“谢谢示例观众送来的'+rule.min_count+'个所选礼物”，然后执行以下指令：' : '')+text;
+      return 'ID '+rule.gift_id+'：'+(rule.thanks ? '请先说“谢谢示例观众送来的'+rule.min_count+'个所选礼物”，然后：' : '')+text;
     }).join(String.fromCharCode(10,10));
   };
   window.studioReady.then(async () => {

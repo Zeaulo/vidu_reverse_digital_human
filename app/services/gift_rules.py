@@ -64,7 +64,7 @@ class GiftRules:
         text = rule.instruction
         for token, value in {'{昵称}': nickname, '{礼物名称}': name, '{数量}': str(count)}.items():
             text = text.replace(token, value)
-        prefix = f'请先说“谢谢{nickname}送来的{count}个{name}”，然后执行以下指令：' if rule.thanks else ''
+        prefix = f'请先说“谢谢{nickname}送来的{count}个{name}”，然后：' if rule.thanks else ''
         if len(prefix + text) > 500:
             return None, rule.gift_id  # 不发送被截断而改变语义的指令。
         return prefix + text, rule.gift_id
