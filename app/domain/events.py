@@ -29,6 +29,20 @@ class LiveEvent(BaseModel):
     content: str = ""
     gift_name: str | None = None
     gift_count: int = 0
+    room_id: str = ''  # 礼物来源房间。
+    gift_id: str = ''  # 不用名称作为礼物身份。
+    diamond_count: int | None = None  # 单价未知时保留空值。
+    recipient_id: str = ''
+    recipient_name: str = ''
+    group_id: str = ''
+    gift_total: int | None = None  # 连击累计量，与本次增量分开。
+    settlement: str = ''  # ended / timeout / late_delta / single。
+    quantity_certain: bool = True
+    metadata_source: str = ''
+    price_source: str = ''
+    source_method: str = ''
+    source_message_id: str = ''
+    quantity_fields: dict = Field(default_factory=dict)
     like_count: int = 0
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     raw: dict[str, Any] = Field(default_factory=dict)
@@ -42,7 +56,8 @@ class LiveEvent(BaseModel):
     def to_prompt(self) -> str:
         """将事件转为发送给数字人的自然语言提示。"""
         if self.event_type == "gift":
-            return f"请念出用户名，感谢“{self.nickname}”送出 {self.gift_count or 1} 个{self.gift_name or '礼物'}。"
+            recipient = f'给“{self.recipient_name or self.recipient_id}”' if self.recipient_id or self.recipient_name else ''
+            return f"观众“{self.nickname}”{recipient}送出了 {self.gift_count} 个{self.gift_name or ('未知礼物（ID：'+self.gift_id+'）')}，请简短感谢这位观众，不要声称礼物赠送给你。"
         if self.event_type == "like":
             return f"请念出用户名，感谢“{self.nickname}”为直播点赞。"
         if self.event_type == "enter":

@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.api.vidu import router as vidu_router, sessions, session, saved_accounts
 from app.api.obs import router as obs_router
+from app.api.gifts import router as gifts_router
 from app.storage import obs_access
 from pydantic import BaseModel
 
@@ -40,9 +41,10 @@ async def lifespan(application):
     obs_access.tokens.clear()  # 进程停止时所有 OBS 地址失效。
 
 
-app = FastAPI(title="Vidu 数字人直播桥", version="0.14.2", lifespan=lifespan)
+app = FastAPI(title="Vidu 数字人直播桥", version="0.15.0", lifespan=lifespan)
 app.include_router(vidu_router)
 app.include_router(obs_router)
+app.include_router(gifts_router)
 app.mount("/assets", StaticFiles(directory=ROOT_DIR / "web" / "assets"), name="assets")
 
 
@@ -62,10 +64,25 @@ class WarmupRequest(BaseModel):
     enabled: bool
 
 
+class AutomationRequest(BaseModel):
+    """三个独立互动开关，每次提交完整状态。"""
+    enter: bool = False  # 欢迎观众进入。
+    like: bool = False  # 感谢点赞。
+    comment: bool = True  # 回复弹幕。
+
+
+@app.post('/api/session/automation')
+async def set_automation(body: AutomationRequest, request: Request):
+    """关闭一个开关仅取消对应类型的待发送任务。"""
+    bridge = session(request)['bridge']
+    bridge.set_automation(body.model_dump())
+    return bridge.snapshot()
+
+
 @app.get("/api/health")
 async def health() -> dict:
     """返回服务和队列健康状态。"""
-    return {"status": "ok", "version": "0.14.2"}
+    return {"status": "ok", "version": "0.15.0"}
 
 
 @app.post("/api/session/room")
@@ -124,7 +141,7 @@ async def set_warmup(body: WarmupRequest, request: Request):
 @app.get("/")
 async def index() -> FileResponse:
     """返回本地控制台页面。"""
-    return FileResponse(Path(ROOT_DIR / "web" / "index.html"))
+    return FileResponse(Path(ROOT_DIR / "web" / "index.html"), headers={'Cache-Control':'no-store'})
 
 
 @app.get('/obs')

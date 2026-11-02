@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a5bd87?style=flat-square" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/version-0.14.2-a5bd87?style=flat-square" alt="Version: 0.14.2">
+  <img src="https://img.shields.io/badge/version-0.15.0-a5bd87?style=flat-square" alt="Version: 0.15.0">
   <img src="https://img.shields.io/badge/platform-Windows-64748b?style=flat-square" alt="Platform: Windows">
   <img src="https://img.shields.io/badge/Python-3.11%2B-64748b?style=flat-square" alt="Python 3.11+">
 </p>
@@ -33,7 +33,8 @@
 | 功能 | 你可以做什么 |
 | --- | --- |
 | 分步连接 | 按启动窗口、登录账号、选择角色、发送指令四步操作，实时查看处理状态。 |
-| 直播互动调度 | 采集评论并排队发送；开启暖场后，欢迎进入直播间的观众，感谢点赞和礼物。 |
+| 直播互动调度 | 欢迎进入直播间、谢谢点赞、回复弹幕三个独立开关；礼物独立聚合和调度。 |
+| 礼物自定义指令 | 按礼物 ID 绑定指令和数量门槛，默认先答谢用户；支持图片目录与同连击一次触发。 |
 | 音视频预览 | 查看数字人音视频，开启声音、重新连接画面，并观察源轨道和收发画质。 |
 | OBS 接入 | 复制本机浏览器源链接；支持控制台与 OBS 并行接收，转发比例可选 100%、80%、50%。 |
 | 有限自动恢复 | 对明确的超时和时长上限退避重试；恢复期间尽量保留最后一帧，手动停止立即取消。 |
@@ -131,7 +132,7 @@ powershell -ExecutionPolicy Bypass -File test/start_studio.ps1
 ## 使用流程
 
 1. **连接 Vidu**：启动有头 Chrome，登录账号，输入角色 ID 并等待媒体连接。保持 Vidu 窗口打开。
-2. **连接直播间**：输入抖音直播间 ID，启动采集与自动调度。需要欢迎和感谢互动时开启暖场。
+2. **连接直播间**：输入抖音直播间 ID，启动采集与自动调度。分别选择欢迎进入直播间、谢谢点赞、回复弹幕，默认仅开启回复弹幕。
 3. **发送自定义指令**：在步骤 4 输入内容，点击发送或按回车；中文输入法选词不会触发发送。
 4. **接入 OBS**：点击“复制 OBS 链接”，在同一电脑的 OBS 中添加“浏览器源”，粘贴地址并设置宽高。需要 OBS 混音时启用“通过 OBS 控制音频”。
 5. **保存与结束**：先保存直播记录，再停止采集或通话。停止采集不挂断数字人；断开通话会取消自动恢复。
