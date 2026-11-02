@@ -33,7 +33,12 @@ class GiftCatalog:
         result = {key:dict(row) for key,row in self.baseline.items()}
         cache = self.rooms.get(room_id)
         if cache and self.clock()-cache['stamp'] < 3600:
-            result.update(cache['rows'])
+            for key, row in cache['rows'].items():
+                previous = result.get(key, {})  # 缺失可见性时保留已有快照证据。
+                if row.get('is_displayed_on_panel') is None and previous.get('is_displayed_on_panel') is not None:
+                    row = {**row, 'is_displayed_on_panel':previous['is_displayed_on_panel'],
+                           'visibility_source':'historical_snapshot'}
+                result[key] = row
         for key,row in self.observed.get(room_id,{}).items():
             previous = result.get(key,{})
             result[key] = {**previous,**row}
@@ -67,16 +72,22 @@ class GiftCatalog:
             gift.price_source = 'catalog_reference'
         return gift
 
-    def query(self, room_id, search='', offset=0, limit=50):
-        """按 ID 或名称查询并分页，保留同名不同 ID。"""
+    def query(self, room_id, search='', offset=0, limit=50, include_hidden=False):
+        """按 ID 或名称查询并分页，默认只展示用户礼物面板可见项。"""
         rows = self.entries(room_id).values()
         needle = search.casefold().strip()
-        matched = [row for row in rows if needle in str(row['id']).casefold() or needle in str(row.get('name','')).casefold()]
+        matched = [row for row in rows if (include_hidden or row.get('is_displayed_on_panel') is True) and
+                   (needle in str(row['id']).casefold() or needle in str(row.get('name','')).casefold())]
         matched.sort(key=lambda row:(row.get('name') or '',row['id']))
         cache = self.rooms.get(room_id)
+        all_rows = list(rows)
+        hidden_count = sum(1 for row in all_rows if row.get('is_displayed_on_panel') is False)
+        visible_count = sum(1 for row in all_rows if row.get('is_displayed_on_panel') is True)
+        unknown_count = len(all_rows) - hidden_count - visible_count
         return {'items':matched[offset:offset+limit],'total':len(matched),
                 'offset':offset,'limit':limit,'room_id':room_id,'refreshing':self.refreshing,
                 'cache_fresh':bool(cache and self.clock()-cache['stamp'] < 3600),
+                'include_hidden':include_hidden,'visible_count':visible_count,'hidden_count':hidden_count,'unknown_count':unknown_count,
                 'error':self.last_error,'retry_in':max(0,round(self.retry_after-self.clock()))}
 
     def import_response(self, room_id, payload):
@@ -97,6 +108,8 @@ class GiftCatalog:
                 'diamond_count':number(value(gift,'diamondCount','diamond_count')),
                 'type':gift.get('type'),'combo':gift.get('combo'),
                 'image':safe_gift_image(gift.get('image')),
+                'is_displayed_on_panel': gift.get('is_displayed_on_panel') if isinstance(gift.get('is_displayed_on_panel'), bool) else None,
+                'visibility_source':'douyin_is_displayed_on_panel' if isinstance(gift.get('is_displayed_on_panel'), bool) else 'unknown',
                 'source':'room_catalog','updated_at':stamp}
         if not rows:
             raise ValueError('当前响应未包含礼物，保留已有目录')

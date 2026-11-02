@@ -9,7 +9,7 @@ async (page) => {
   await page.getByRole('button',{name:'保存规则',exact:true}).click();
   await page.locator('#rule-status').filter({hasText:'已保存 1 条规则'}).waitFor();
   await page.getByRole('button',{name:'预览指令',exact:true}).click();
-  if (!(await page.locator('#rule-preview-text').innerText()).includes('请先说“谢谢示例观众')) throw new Error('预览缺少答谢');
+  if (!(await page.locator('#rule-preview-text').innerText()).includes('请先说“谢谢示例观众送来的1个所选礼物”，然后：向示例观众比心')) throw new Error('预览答谢模板不正确');
   await page.getByLabel('欢迎进入直播间',{exact:true}).check();
   await page.waitForFunction(() => !document.querySelector('#auto-enter').disabled);
   await page.getByLabel('回复弹幕',{exact:true}).uncheck();

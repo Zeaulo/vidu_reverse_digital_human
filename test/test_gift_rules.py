@@ -35,7 +35,7 @@ def test_threshold_late_growth_and_thanks():
             await bridge.dispatch_once()
             assert len(call.sent) == 1
             assert '请先说“谢谢观众送来的3个玫瑰”' in call.sent[0]
-            assert '然后执行以下指令：向观众比心，收到3个玫瑰' in call.sent[0]
+            assert '然后：向观众比心，收到3个玫瑰' in call.sent[0]
             bridge.handle_payload(packet(5,1,'c'))
             now[0] += 4
             await bridge.dispatch_once()

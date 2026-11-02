@@ -22,10 +22,11 @@ async def save_rules(body: GiftRulesBody, request: Request):
 
 @router.get('/catalog')
 async def catalog(request: Request, search: str = Query('',max_length=100),
-                  offset: int = Query(0,ge=0),limit: int = Query(50,ge=1,le=100)):
+                  offset: int = Query(0,ge=0),limit: int = Query(50,ge=1,le=100),
+                  include_hidden: bool = Query(False)):
     """目录仅在当前会话房间内合并，查询结果有分页上限。"""
     bridge = session(request)['bridge']
-    return bridge.catalog.query(bridge.room_id,search,offset,limit)
+    return bridge.catalog.query(bridge.room_id,search,offset,limit,include_hidden)
 
 
 @router.get('/status')
