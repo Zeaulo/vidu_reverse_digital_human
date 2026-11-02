@@ -4,6 +4,7 @@ import threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from playwright.sync_api import sync_playwright
 
@@ -34,6 +35,10 @@ def main():
         {'event_type': 'like', 'nickname': '青山', 'like_count': 8, 'timestamp': '2026-11-02T12:06:29Z', 'delivery': 'accepted'},
         {'event_type': 'like', 'nickname': '月亮船', 'like_count': 3, 'timestamp': '2026-11-02T12:06:20Z', 'delivery': 'observed'},
     ]
+    baseline = json.loads((ROOT / 'data/gifts/baseline-2026-11-02.json').read_text(encoding='utf-8'))  # 公开目录快照。
+    visible_gifts = [gift for gift in baseline['gifts'] if gift.get('is_displayed_on_panel') is True]  # 默认只展示面板可见项。
+    rules = [{'gift_id': '2001', 'enabled': True, 'thanks': True, 'min_count': 3,
+              'instruction': '向镜头比心，并对{昵称}说：谢谢你的{数量}个{礼物名称}，祝你今天开心！'}]  # 示例礼物规则。
 
     def reply(route):
         """所有 API 请求都返回演示数据，禁止请求真实上游。"""
@@ -43,9 +48,21 @@ def main():
         elif path == 'vidu/accounts':
             data = {'accounts': []}
         elif path == 'events':
-            data = {'state': 'online', 'room_id': '100000000001', 'queue_size': 1, 'warmup': True,
+            data = {'state': 'online', 'room_id': '100000000001', 'queue_size': 1,
+                    'automation': {'enter': False, 'like': False, 'comment': True},
                     'counts': {'received': 7, 'comment': 3, 'enter': 2, 'like': 2, 'likes': 11,
                                'queued': 6, 'sent': 5, 'accepted': 5}, 'events': events, 'detail': ''}
+        elif path == 'gifts/rules':
+            data = {'rules': rules}
+        elif path.startswith('gifts/catalog'):
+            query = parse_qs(urlsplit(route.request.url).query)  # 按真实前端搜索参数筛选演示目录。
+            search = query.get('search', [''])[0]
+            items = [gift for gift in visible_gifts if search in gift['id'] or search in gift['name']]
+            data = {'items': [{**gift, 'source': 'historical_snapshot', 'updated_at': '2026-11-02'} for gift in items[:5]],
+                    'total': len(items), 'visible_count': len(visible_gifts), 'hidden_count': 788, 'unknown_count': 0,
+                    'include_hidden': query.get('include_hidden', ['false'])[0] == 'true', 'cache_fresh': False, 'room_id': ''}
+        elif path == 'gifts/status':
+            data = {'counts': {}, 'records': [], 'deliveries': [], 'dispatch': {}}
         else:
             data = {}
         route.fulfill(content_type='application/json', body=json.dumps(data))
@@ -58,6 +75,10 @@ def main():
                 page.route('**/api/**', reply)
                 page.goto(f'http://127.0.0.1:{server.server_port}/', wait_until='networkidle')
                 page.locator('#events').get_by_text('晚上好，今天想听一个有趣的故事！').wait_for()
+                page.locator('.rule-selected').get_by_text('玫瑰', exact=False).wait_for()
+                page.locator('#gift-catalog tr').first.wait_for()
+                page.locator('img').evaluate_all("images => images.forEach(image => image.loading = 'eager')")  # 截图前主动加载目录缩略图。
+                page.wait_for_function('Array.from(document.images).every(image => image.complete)', timeout=20000)
                 page.evaluate('document.fonts.ready')
                 page.evaluate("""() => {
                     // 演示水印在截图页内呈现，清楚区分示例界面和真实直播证据。
@@ -67,11 +88,16 @@ def main():
                     document.querySelector('.studio-header').append(badge);
                 }""")
                 page.screenshot(path=str(DESTINATION / 'studio-overview.jpg'), type='jpeg', quality=88, full_page=True)
+                page.locator('.gift-rules').evaluate('element => element.open = false')  # 连接截图聚焦四步操作。
                 connection = page.locator('#step-call').locator('xpath=..')  # 账号与分步连接区域。
                 connection.screenshot(path=str(DESTINATION / 'connection.jpg'), type='jpeg', quality=90)
+                page.locator('.gift-rules').evaluate('element => element.open = true')
+                page.locator('#rule-preview').click()
+                page.locator('.gift-rules').screenshot(path=str(DESTINATION / 'gift-rules.jpg'), type='jpeg', quality=90)
+                page.locator('#gift-catalog').locator('xpath=../../..').screenshot(path=str(DESTINATION / 'gift-catalog.jpg'), type='jpeg', quality=90)
                 page.locator('#avatar-video').locator('xpath=../..').screenshot(path=str(DESTINATION / 'media-obs.jpg'), type='jpeg', quality=90)
                 page.locator('#live-room').screenshot(path=str(DESTINATION / 'live-events.jpg'), type='jpeg', quality=90)
-                print('已生成四张演示截图：' + ', '.join(path.name for path in DESTINATION.glob('*.jpg')))
+                print('已生成当前界面的演示截图：' + ', '.join(path.name for path in DESTINATION.glob('*.jpg')))
             finally:
                 browser.close()
     finally:
