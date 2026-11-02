@@ -1,0 +1,3 @@
+/* 项目总览页使用与控制台一致的深色苹果毛玻璃风格。 */
+body { background: radial-gradient(circle at top, #23395d 0, #0b1020 45%, #05070d 100%); }
+.glass { background: rgba(15, 23, 42, .62); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 24px 80px rgba(0,0,0,.25); backdrop-filter: blur(22px); }

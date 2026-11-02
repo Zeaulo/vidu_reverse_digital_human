@@ -1,0 +1,7 @@
+/* 画面铺满 OBS 浏览器源，同时保持视频比例。 */
+html,body { width:100%; height:100%; margin:0; overflow:hidden; background:transparent; }
+#video,#freeze { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+#freeze[hidden],#sound[hidden] { display:none; }
+#status { position:absolute; left:12px; bottom:12px; padding:7px 10px; color:#eef3ed; background:rgba(17,22,17,.75); font:14px 'Microsoft YaHei',sans-serif; border-radius:6px; }
+#status:empty { display:none; }
+#sound { position:absolute; right:12px; bottom:12px; padding:8px 10px; }

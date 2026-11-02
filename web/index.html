@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="本地数字人直播控制台，管理通话、画面与直播间事件。">
+  <title>数字人直播控制台</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="/assets/style.css">
+</head>
+<body class="min-h-screen text-slate-100">
+  <main class="studio-shell">
+    <header class="studio-header">
+      <div><p class="eyebrow"><span class="brand-mark">V</span> VIDU · LIVE STUDIO</p><h1>数字人直播控制台</h1><p class="header-description">连接数字人，接住直播间的每一次互动。</p></div>
+      <a class="header-link" href="#live-room">直播间事件 <span aria-hidden="true">↗</span></a>
+    </header>
+    <!-- 直播间区域保留在页面最后，账号和视频模块在脚本中插入到它之前。 -->
+    <section id="live-room" class="glass room-panel">
+      <div class="panel-heading"><div><p class="section-index">03 / LIVE ROOM</p><h2>直播间事件</h2><p>连接直播间，查看互动与调度状态。</p></div><span class="panel-badge">实时采集</span></div>
+      <div class="room-controls"><input id="room-id" class="control" aria-label="抖音直播间 ID" placeholder="输入抖音直播间 ID" list="history-room" autocomplete="off"><datalist id="history-room"></datalist><button id="save-room" class="button">连接直播间并自动调度</button></div>
+      <button type="button" id="clear-room-history" class="history-clear">清除直播间 ID 历史</button>
+      <label class="warmup-toggle"><input id="warmup" type="checkbox"> <span>开启暖场</span><small>欢迎进入的观众，感谢点赞和礼物，并念出用户名</small></label>
+      <div class="status-grid"><div class="metric"><span>服务状态</span><strong id="service-status">检查中</strong></div><div class="metric"><span>当前房间</span><strong id="current-room">未设置</strong></div><div class="metric"><span>待处理事件</span><strong id="queue-size">0</strong></div></div>
+      <div class="event-heading"><div><p class="section-index">LIVE FEED</p><h3>实时评论</h3></div><button id="export-events" class="button button-secondary">保存直播记录</button></div>
+      <div id="events" class="event-list" aria-live="polite"></div>
+    </section>
+  </main>
+  <script src="/assets/history.js"></script><script src="/assets/app.js"></script><script src="/assets/vidu.js"></script><script src="/assets/media.js"></script>
+</body></html>

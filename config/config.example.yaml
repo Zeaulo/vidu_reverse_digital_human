@@ -1,0 +1,22 @@
+server:
+  host: "127.0.0.1"
+  port: 8795
+douyin:
+  enabled: true
+  room_id: ""
+  ws_url: "ws://127.0.0.1:1088"
+  reconnect_seconds: 5
+vidu:
+  enabled: true
+  page_url: "https://www.vidu.cn/vidu-stream/avatar"
+  connect_mode: "playwright"
+events:
+  comments: true
+  gifts: true
+  likes: false
+  enters: false
+  follows: false
+  min_interval_ms: 3500
+  max_queue_size: 30
+  max_message_length: 120
+  sensitive_words: []

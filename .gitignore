@@ -1,0 +1,12 @@
+__pycache__/
+.pytest_cache/
+.venv/
+config/config.yaml
+config/saved_accounts.bin
+config/saved_accounts.tmp
+logs/
+output/
+.playwright-cli/
+.env
+test/artifacts/
+test/tools/
